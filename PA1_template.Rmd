@@ -1,3 +1,5 @@
+
+```{r }
 ---
 title: "Reproducible Research: Peer Assessment 1"
 output: 
@@ -8,11 +10,12 @@ keep_md: true
 
 ## Loading and preprocessing the data
 First I include the required packages, load the data and transform the date variable.
-```{r}
+```{r, fig.path= "./figure"}
 library("dplyr")
 library("plyr")
 library(ggplot2)
 library(lattice)
+
 setwd("/Users/North_Point/Dropbox/MOOC/Data_Science/Reporducible_Research/week1")
 data <- read.csv("activity.csv")
 data$date = as.POSIXct(strptime(data$date, format = "%Y-%m-%d"))
@@ -109,5 +112,6 @@ new_data = mutate(new_data, wk = ifelse(wk %in% c("Sunday", "Saturdat"), "Weeken
 
 weekday_data = ddply(new_data, .(wk, interval), summarize, average_step_per_interval = mean(steps))
 xyplot(average_step_per_interval~interval|as.factor(wk), data = weekday_data, type = "l", layout = c(1,2), xlab = "Interval", ylab = "Number of steps")
+```
 ```
 
