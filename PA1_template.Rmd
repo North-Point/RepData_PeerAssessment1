@@ -1,82 +1,113 @@
 ---
 title: "Reproducible Research: Peer Assessment 1"
 output: 
-  html_document:
-    keep_md: true
+html_document:
+keep_md: true
 ---
 
 
 ## Loading and preprocessing the data
-```{r, echo = TRUE}
-dat <- read.csv("/Users/North_Point/Dropbox/MOOC/Data_Science/Reporducible Research/RepData_PeerAssessment1/activity.csv")
-dat <- transform(dat, Date = factor(date), Interval = factor(interval))
+First I include the required packages, load the data and transform the date variable.
+```{r}
+library("dplyr")
+library("plyr")
+library(ggplot2)
+library(lattice)
+setwd("/Users/North_Point/Dropbox/MOOC/Data_Science/Reporducible_Research/week1")
+data <- read.csv("activity.csv")
+data$date = as.POSIXct(strptime(data$date, format = "%Y-%m-%d"))
+```
+
+## What is mean total number of steps taken per day?
+```{r}
+total_step_per_day = ddply(data, .(date), summarize, total_step = sum(steps, na.rm = TRUE))
+
+g1 = ggplot(total_step_per_day, aes(x = total_step)) + geom_histogram() +
+        labs(x = "Total Number of Steps per Day") +
+        labs(y = "Count") + 
+        labs(title = "Histogram of Total Number of Steps per Day")
+plot(g1)
+
 ```
 
 
-## What is mean total number of steps taken per day?
-```{r, echo = TRUE}
-dat$sum_of_steps_per_day <- ave(dat$steps, dat$Date, FUN = sum)
-library(ggplot2)
-qplot(sum_of_steps_per_day, data = dat)
-mean_of_total_steps_per_day = mean(unique(dat$sum_of_steps_per_day),na.rm = TRUE)
-median_of_total_steps_per_day = median(unique(dat$sum_of_steps_per_day), na.rm = TRUE)
-mean_of_total_steps_per_day
-median_of_total_steps_per_day
+The mean and median of the total number of steps taken per day are the follows:
+```{r}
+average_total_step_per_day = mean(total_step_per_day$total_step)
+average_total_step_per_day
+median_total_step_per_day = median(total_step_per_day$total_step)
+median_total_step_per_day
 ```
 
 ## What is the average daily activity pattern?
 ```{r}
-library(plyr)
-r1 <- ddply(dat, .(Interval), summarize, mean = mean(steps, na.rm = TRUE))
-qplot(r1$Interval, r1$mean, type = "l")
-r1[which.max(r1$mean), "Interval"]
+interval_data = mutate(data, interval = as.factor(interval))
+interval_data = ddply(interval_data, .(interval), summarize, average_step_per_interval = mean(steps, na.rm = TRUE))
+g2 = ggplot(interval_data, aes(x = as.integer(interval), y = average_step_per_interval)) + geom_point() + geom_line() +         labs( x = "5-minute Interval") + labs( y = "Average Number of Steps Taken across All Days")+
+        labs( title = "Time-Series Plot")
+plot(g2)
+```
+
+
+The 5-minute interval that contains the maximum number of steps on average across all the days in the dataset is:
+
+
+```{r}
+max_interval = interval_data[which.max(interval_data$average_step_per_interval), "interval"]
+max_interval
 ```
 
 ## Imputing missing values
+
+
+The total number of missing values in the dataset is:
+
+
 ```{r}
-number_of_missing_value <- sum(is.na(dat$steps))
-## Fill with mean value at that interval
-new_dat <- dat
-new_dat$Interval <- as.numeric(new_dat$Interval)
-for(i in 1:nrow(new_dat)){
-        if(is.na(new_dat[i, "steps"])){
-                current_interval = new_dat[i, "Interval"]
-                new_dat[i, "steps"] = r1[current_interval, "mean"]
-        }
-        
-}
-new_dat$sum_of_steps_per_day <- ave(new_dat$steps, new_dat$Date, FUN = sum)
-library(ggplot2)
-qplot(sum_of_steps_per_day, data = new_dat)
-new_mean_of_total_steps_per_day = mean(unique(new_dat$sum_of_steps_per_day),na.rm = TRUE)
-new_median_of_total_steps_per_day = median(unique(new_dat$sum_of_steps_per_day), na.rm = TRUE)
-new_mean_of_total_steps_per_day
-new_median_of_total_steps_per_day
+total_num_of_NA = sum(sapply(data$steps,is.na))
+total_num_of_NA
 ```
 
-#####Comment: Since I replace the missing value with the mean value for that 5-minute interval, the mean of total number of steps taken per day remains the same as previous estimate. But such imputation slightly increase the median of total number of steps taken per day, from 10765 to 10765.59. We can see such imputation might increase the estimate of total number of steps taken per day, but the effect will be different with different choice of imputation.
 
+I use the mean for that 5-minute interval to fillall of the missing values in the dataset. The histogram of the total number of steps taken each day after imputation is
+
+
+```{r}
+rep_interval_data = rep(interval_data$average_step_per_interval, length(unique(data$date)))
+new_data = data
+new_data[sapply(data$steps,is.na),]$steps = rep_interval_data[sapply(data$steps,is.na)]
+new_total_step_per_day = ddply(new_data, .(date), summarize, total_step = sum(steps))
+g3 = ggplot(new_total_step_per_day, aes(x = total_step)) + geom_histogram() +
+        labs(x = "Total Number of Steps per Day") +
+        labs(y = "Count") + 
+        labs(title = "Histogram of Total Number of Steps per Day with the Missing Data Filled in")
+plot(g3)
+```
+
+
+Also, I calculated the new mean and median total number of steps taken per day, which are the follows respectively:
+
+
+```{r}
+new_average_total_step_per_day = mean(new_total_step_per_day$total_step)
+new_average_total_step_per_day
+new_median_total_step_per_day = median(new_total_step_per_day$total_step)
+new_median_total_step_per_day
+```
+
+
+Compare with the meastures from the old dataset, we see both of the old mean (9354.23) and old median (10395) value of total number of steps taken per day have increased to 10766.19 after filling the missing data with the average in that interval.
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
+
+
+The panel plot characterizes the differences in activity patterns between weekdays and weekends are the follows:
 ```{r}
-new_dat$date = as.Date(new_dat$date, "%Y-%m-%d")
-library(timeDate)
-new_dat$isweekday = isWeekday(new_dat$date, wday=1:5)
-new_dat_weekday = subset(new_dat, new_dat$isweekday == TRUE)
-new_dat_weekend = subset(new_dat, new_dat$isweekday == FALSE)
-r2 <- ddply(new_dat_weekday, .(Interval), summarize, mean = mean(steps, na.rm = TRUE))
-r3 <- ddply(new_dat_weekend, .(Interval), summarize, mean = mean(steps, na.rm = TRUE))
-# head(r2,20)
-r2 <- transform(r2, Interval = dat[r2$Interval, "interval"], isweekday = "weekday")
-r3 <- transform(r3, Interval = dat[r3$Interval, "interval"], isweekday = "weekend")
-total <- rbind(r2,r3)
-# head(total)
-# qplot(Interval, mean, data = total, facets = isweekday ~ ., geom = "line")
-g <- ggplot(total, aes(Interval, mean))
-g <- g + geom_line(colour = "dodgerblue1") + facet_wrap(~isweekday, nrow = 2) + labs(x = "Interval") + labs(y = "Number of steps")
- g <- g + theme_bw() + theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
-#g <- g + theme_classic()
-g <- g + theme(strip.background = element_rect(fill = "bisque1"))
-g
+new_data = mutate(new_data, wk = weekdays(date), date = as.POSIXct(date))
+new_data = mutate(new_data, wk = ifelse(wk %in% c("Sunday", "Saturdat"), "Weekend", "Weekday"))
+
+weekday_data = ddply(new_data, .(wk, interval), summarize, average_step_per_interval = mean(steps))
+xyplot(average_step_per_interval~interval|as.factor(wk), data = weekday_data, type = "l", layout = c(1,2), xlab = "Interval", ylab = "Number of steps")
 ```
+
